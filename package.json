@@ -1,0 +1,19 @@
+{
+  "name": "ds-test",
+  "version": "1.0.0",
+  "description": "",
+  "main": "start.js",
+  "scripts": {
+    "start-dev": "DB=mongodb://localhost:27017/winwin HOST=localhost:6020 node server.js",
+    "seed-db": "HOST=localhost:6020 node ./scripts/seed.js"
+  },
+  "author": "IFOX",
+  "license": "MIT",
+  "dependencies": {
+    "body-parser": "^1.16.1",
+    "underscore": "latest",
+    "deepstream.io-client-js": "git://github.com/deepstreamIO/deepstream.io-client-js.git",
+    "deepstream.io-storage-mongodb": "git://github.com/foxxintheboxx/deepstream.io-storage-mongodb.git#query",
+    "express": "^4.13.4"
+  }
+}
