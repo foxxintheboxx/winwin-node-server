@@ -1,11 +1,14 @@
 const _ = require('underscore');
 
+
 const deepstream = require('deepstream.io-client-js')
 const MongoDBStorageConnector = require( 'deepstream.io-storage-mongodb' );
 
-const client = deepstream(process.env.DS_HOST || process.env.HOST)
+const Config = require('./config');
+
+const client = deepstream(Config.host);
 const db = new MongoDBStorageConnector( {
-  connectionString: process.env.MONGODB_URI || process.env.DB,
+  connectionString: Config.db,
   splitChar: '/'
 });
 

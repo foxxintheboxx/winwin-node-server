@@ -1,10 +1,14 @@
-const deepstream = require('deepstream.io-client-js');
 const _ = require("underscore");
+
+const deepstream = require("deepstream.io-client-js");
+
 const LatLon = require("../latlon-spherical");
 const constants = deepstream.CONSTANTS
+const Config = require("../config");
 
-const client = deepstream(process.env.HOST).login({ username: "nodeserver", password:"1234" });
-client.on( 'connectionStateChanged', ( connectionState ) => {
+console.log(Config.host);
+const client = deepstream(Config.host).login({ username: "nodeserver", password:"12934" });
+client.on( "connectionStateChanged", ( connectionState ) => {
   if (connectionState === constants.CONNECTION_STATE.OPEN) {
     let count;
     let completed = 0;
@@ -16,9 +20,9 @@ client.on( 'connectionStateChanged', ( connectionState ) => {
     let directions = 1;
     const callback = (err) => {
       if (err) {
-        console.log('Record set with error:', err)
+        console.log("Record set with error:", err)
       } else {
-        console.log('Record set without error')
+        console.log("Record set without error")
       }
       completed += 1;
       if (completed === needed) {
@@ -124,8 +128,8 @@ const makeObject = (lat, lng, record, callback, type, opts) => {
 }
 
 const getRandomColor = () => {
-   const letters = '0123456789ABCDEF';
-   let color = '#';
+   const letters = "0123456789ABCDEF";
+   let color = "#";
    for (let i = 0; i < 6; i++ ) {
       color += letters[Math.floor(Math.random() * 16)];
    }
