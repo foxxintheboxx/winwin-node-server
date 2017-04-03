@@ -12,88 +12,138 @@ const db = new MongoDBStorageConnector( {
   splitChar: '/'
 });
 
-client.rpc.provide( 'multiply-number', ( data, response ) => {
-     const result = data.value * data.multiplier;
-     response.send({ result, name:'digits/1'});
-});
-
-client.rpc.provide( 'pickup-coin', ( data, response ) => {
-    const coinUid = data.coin
-    const userUid = data.uid
-    const coinsNearUser = client.record.getRecord( 'nearuser/' + userUid )
-    const coin = client.record.getRecord( 'object/' + coinUid )
-    const user = client.record.getRecord( 'users/' + userUid )
-    console.log(data)
-    coinsNearUser.whenReady( r => {
-      const data = r.get()
-      console.log("pickup 2")
-      if (data[coinUid]) {
-        coin.whenReady( c => {
-          const coinData = c.get()
-         console.log(coinData)
-         console.log(coinUid)
-         if (!coinData.type) {
-            c.delete() // Get record will have created the coin. Lets delete it.
-            response.send( { error: 'Coin doesnt exist!' } )
-         } else if (coinData.type !== "coin") {
-            c.discard()
-            response.send( { error: 'Object not a coin!' } )
-         } else if (!coinData.owner) {
-            user.whenReady( u => {
-              u.set('account', u.get().account + coinData.value)
-              c.set('owner', userUid)
-              response.send( { success: coinData.value } )
-            coin.discard()
-            })
-          } else {
-            response.send( { error: 'Coin already has an owner!' } )
-            coin.discard()
-          }
-        })
+handleCoin = (object, user, response, userLocationAdmin, userUid) => {
+  object.whenReady( o => {
+    user.whenReady( u => {
+      const objectData = o.get();
+      const userData = u.get();
+      if (!objectData.owner || true) {
+        u.set('account', userData.account + objectData.value);
+        o.set('owner', userUid);
+        updateUserLocationAdmin(userLocationAdmin, true);
+        response.send({ success: objectData.value });
       } else {
-        response.send( { error: 'this coins is not near you location!' } )
-        coin.discard()
+        response.send({ error: 'Coin already has an owner!' });
       }
-    })
+    });
+  });
+};
+
+handleCrumb = (object, user, response, userLocationAdmin) => {
+  object.whenReady( o => {
+    user.whenReady( u => {
+      const objectData = o.get();
+      const userData = u.get();
+      u.set('exp', (userData.exp || 0) + 10);
+      updateUserLocationAdmin(userLocationAdmin, false, objectData.path_uid, objectData.path_count);
+      response.send({ success: userData});
+    });
+  });
+};
+
+updateUserLocationAdmin = (userLocation, isCoin, pathUid, pathCount) => {
+  userLocation.whenReady(ul => {
+    const ulData = ul.get();
+    const newPathData = { path_count: pathCount, path_uid: pathUid };
+    if (isCoin) {
+      newPathData.path_count = 0;
+      newPathData.path_uid = '';
+    } else {
+      newPathData.path_count = newPathData.path_count + 1
+    }
+    ul.set('path_data', newPathData);
+  });
+};
+
+client.rpc.provide( 'pickup-object', ( data, response ) => {
+  const objectUid = data.object;
+  const userUid = data.uid;
+  const objectsNearUser = client.record.getRecord( 'nearuser/' + userUid );
+  const user = client.record.getRecord( 'users/' + userUid );
+  const userLocationAdmin = client.record.getRecord( 'userlocationadmin/' + userUid);
+  client.record.has('object/' + objectUid, (error, exists) => {
+    console.log(objectUid);
+    if (exists) {
+      const object = client.record.getRecord( 'object/' + objectUid);
+      objectsNearUser.whenReady( r => {
+        const data = r.get();
+        if (data[objectUid]) {
+          object.whenReady( o => {
+            const objectData = o.get()
+            if (objectData.type === 'coin') {
+              handleCoin(object, user, response, userLocationAdmin, userUid);
+            } else if (objectData.type === 'crumb'){
+              handleCrumb(object, user, response, userLocationAdmin);
+            } else {
+              response.send( { error: 'unknown' } );
+              o.discard();
+            }
+           });
+        } else {
+          response.send( { error: 'this object is not near you location!' } );
+          r.discard();
+        }
+      })
+    } else {
+      response.send( { error: 'Object doesnt exist!' } );
+    }
+  });
 });
 
 var lists = {};
 
+const updateObjectsNearUser = (uid, coordinates, pathUid, pathCount) => {
+  const lat = coordinates.lat;
+  const lng = coordinates.lng;
+  const collection = 'object';
+  const query = {
+    location: {
+      $nearSphere: {
+        $geometry: {
+          type : 'Point',
+          coordinates : [ lng, lat ]
+        },
+        $minDistance: 0,
+        $maxDistance: 4000
+      }
+    }
+  };
+  if (pathUid && pathUid !== '') {
+    query.path_uid = pathUid;
+    query.path_count = pathCount;
+  } else {
+    query.path_count = 0;
+  }
+  console.log(query);
+  let objectsNearUser = client.record.getRecord('nearuser/' + uid);
+  db.find( 'object', query, ( err, docs ) => {
+      console.log(docs)
+      const ids = _.reduce( docs, ( memo, doc ) => {
+        memo[doc.ds_key] = true
+        return memo
+      }, {});
+      objectsNearUser.set( ids );
+  });
+};
+
 const userLocationDidChange = (uid) => {
   const userLocation = client.record.getRecord( 'userlocation/' + uid );
+  const userLocationAdmin = client.record.getRecord('userlocationadmin/' + uid);
   userLocation.whenReady( record => {
     console.log(record.get());
     const data = record.get()
     if ( data.lng && data.lat ) {
       // change to subscribe only to path or make other parts of record unwritable
-      console.log("subscribed to " + uid);
-      record.subscribe( (data) => {
-        const lat = data.lat;
-        const lng = data.lng;
-        const collection = 'object';
-        const query = {
-          location: {
-            $nearSphere: {
-              $geometry: {
-                type : 'Point',
-                coordinates : [ data.lng, data.lat ]
-              },
-              $minDistance: 0,
-              $maxDistance: 4000
-            }
-          }
-        };
-        let objectsNearUser = client.record.getRecord('nearuser/' + uid);
-        db.find( 'object', query, ( err, docs ) => {
-            console.log(docs)
-            const ids = _.reduce( docs, ( memo, doc ) => {
-              memo[doc.ds_key] = true
-              return memo
-            }, {});
-            objectsNearUser.set( ids );
-        });
+      console.log('subscribed to ' + uid);
+      record.subscribe( data => {
+          userLocationAdmin.set('location', { lng: data.lng, lat: data.lat });
       });
     }
+  });
+  userLocationAdmin.subscribe( data => {
+    const loca = data.location || {lng: 0, lat: 0};
+    const pathData = data.path_data || {path_uid: '', path_count: 0};
+    updateObjectsNearUser(uid, loca, pathData.path_uid, pathData.path_count);
   });
 };
 
@@ -130,7 +180,7 @@ client.setup = (uid) => {
     if (serverData === null) return
     delete serverData.uid
     _.each( _.keys( serverData ), (userUid) => {
-      lists["nearuser/" + userUid] = true
+      lists['nearuser/' + userUid] = true
       userLocationDidChange(userUid)
     });
   });

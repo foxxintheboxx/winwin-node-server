@@ -7,17 +7,19 @@ const constants = deepstream.CONSTANTS
 const Config = require("../config");
 
 console.log(Config.host);
-const client = deepstream(Config.host).login({ username: "nodeserver", password:"12934" });
+const client = deepstream(Config.host).login({ username: "nodeserver", password:"1234" });
 client.on( "connectionStateChanged", ( connectionState ) => {
   if (connectionState === constants.CONNECTION_STATE.OPEN) {
     let count;
     let completed = 0;
-    let needed= 45 + 15 * 1 * 2;
+    let clusters = 10;
     let lat0 = 41385985;
     let lat1 = 41401024;
     let lng0 = 2164719;
     let lng1 = 2196712;
-    let directions = 1;
+    let directions = 3;
+    let coinsPerCluster = 1;
+    let needed= clusters * coinsPerCluster + clusters * directions;
     const callback = (err) => {
       if (err) {
         console.log("Record set with error:", err)
@@ -39,7 +41,7 @@ client.on( "connectionStateChanged", ( connectionState ) => {
       if (argArray[0] === "lng1") lng1 = value
       if (argArray[0] === "dir") directions = value
     });
-    for ( count = 0; count < 15; count++ ) {
+    for ( count = 0; count < clusters; count++ ) {
 
       // variables for this set of coins
       const point = new LatLon(_.random(lat0, lat1) / pow, _.random(lng0, lng1) / pow);
@@ -53,7 +55,7 @@ client.on( "connectionStateChanged", ( connectionState ) => {
       for (let d = 0; d < directions; d++) {
         const crumb0 = client.record.getRecord(objRecordName());
         const crumb1 = client.record.getRecord(objRecordName());
-        const crumb2 = (crumbs > 3) ? client.record.getRecord(objRecordName()) : null;
+        const crumb2 = (crumbs > 2) ? client.record.getRecord(objRecordName()) : null;
 
         const bearingOffset = _.random(0, 100); // make  points for all crumbs
         const crumb0Point = point.destinationPoint(avgDistance, bearingOffset * (1 + d));
@@ -86,7 +88,7 @@ client.on( "connectionStateChanged", ( connectionState ) => {
       }
 
       // make Coins
-      for ( let i = 0; i < 3; i++) {
+      for ( let i = 0; i < coinsPerCluster; i++) {
         const _lat = _.random(point.lat * pow - 30, point.lat * pow + 30) / pow;
         const _lng = _.random(point.lon * pow - 30, point.lon * pow + 30) / pow;
         const record = client.record.getRecord(objRecordName());
