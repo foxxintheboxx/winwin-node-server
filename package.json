@@ -10,10 +10,12 @@
   "author": "IFOX",
   "license": "MIT",
   "dependencies": {
+    "@turf/helpers": "^4.0.0",
     "body-parser": "^1.16.1",
-    "underscore": "latest",
     "deepstream.io-client-js": "git://github.com/foxxintheboxx/deepstream.io-client-js.git#master",
     "deepstream.io-storage-mongodb": "git://github.com/foxxintheboxx/deepstream.io-storage-mongodb.git#query",
-    "express": "^4.13.4"
+    "express": "^4.13.4",
+    "random-points-on-polygon": "0.0.4",
+    "underscore": "latest"
   }
 }

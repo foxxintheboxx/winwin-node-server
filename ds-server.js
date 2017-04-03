@@ -7,6 +7,7 @@ const MongoDBStorageConnector = require( 'deepstream.io-storage-mongodb' );
 const Config = require('./config');
 
 const client = deepstream(Config.host);
+console.log(Config.db);
 const db = new MongoDBStorageConnector( {
   connectionString: Config.db,
   splitChar: '/'
@@ -104,9 +105,10 @@ const updateObjectsNearUser = (uid, coordinates, pathUid, pathCount) => {
           coordinates : [ lng, lat ]
         },
         $minDistance: 0,
-        $maxDistance: 4000
+        $maxDistance: 50000
       }
-    }
+    },
+    owner: ''
   };
   if (pathUid && pathUid !== '') {
     query.path_uid = pathUid;
@@ -118,7 +120,7 @@ const updateObjectsNearUser = (uid, coordinates, pathUid, pathCount) => {
   let objectsNearUser = client.record.getRecord('nearuser/' + uid);
   db.find( 'object', query, ( err, docs ) => {
       console.log(docs)
-      const ids = _.reduce( docs, ( memo, doc ) => {
+      const ids = _.reduce( docs.slice(0, 10), ( memo, doc ) => {
         memo[doc.ds_key] = true
         return memo
       }, {});
@@ -154,10 +156,17 @@ client.record.listen( 'nearuser/.*', ( match, isSubscribed, response ) => {
   updateParams[uid] = true
   const serverId = { uid: client.uid }
   if (isSubscribed && typeof lists[ match ] === 'undefined') {
-    response.accept();
-    db.update( 'servers', serverId, { $set : updateParams }, { upsert: true }, null )
-    userLocationDidChange(uid);
-    lists[match] = true
+    const handleResp = () => {
+      response.accept();
+      db.update( 'servers', serverId, { $set : updateParams }, { upsert: true }, null )
+      userLocationDidChange(uid);
+      lists[match] = true
+    };
+    if (db.isReady) {
+      handleResp();
+    } else {
+      db.on( 'ready', handleResp())
+    }
   } else {
     // stop publishing data
     console.log('unsubscribed');
@@ -176,7 +185,9 @@ client.on('error', (error, event, topic) => {
 client.setup = (uid) => {
   client.uid = uid
   const serverId = { uid: client.uid }
-  db.findOne( 'servers', serverId, ( err, serverData ) => {
+  db.on( 'ready', () => { console.log("connected")});
+  if (db.isReady) {
+    db.findOne( 'servers', serverId, ( err, serverData ) => {
     if (serverData === null) return
     delete serverData.uid
     _.each( _.keys( serverData ), (userUid) => {
@@ -184,6 +195,7 @@ client.setup = (uid) => {
       userLocationDidChange(userUid)
     });
   });
+  }
 };
 
 module.exports = client;

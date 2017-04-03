@@ -1,10 +1,12 @@
 const _ = require("underscore");
+const turf = require("@turf/helpers");
 
 const deepstream = require("deepstream.io-client-js");
 
 const LatLon = require("../latlon-spherical");
 const constants = deepstream.CONSTANTS
 const Config = require("../config");
+const randomPointsOnPolygon = require('random-points-on-polygon');
 
 console.log(Config.host);
 const client = deepstream(Config.host).login({ username: "nodeserver", password:"1234" });
@@ -12,11 +14,19 @@ client.on( "connectionStateChanged", ( connectionState ) => {
   if (connectionState === constants.CONNECTION_STATE.OPEN) {
     let count;
     let completed = 0;
-    let clusters = 10;
+    let clusters = 1;
     let lat0 = 41385985;
     let lat1 = 41401024;
     let lng0 = 2164719;
     let lng1 = 2196712;
+
+    const bound0 = [33.7268, -118.32431];
+    const bound2 = [33.7236, -118.29735];
+    const bound3 = [33.7127, -118.29738];
+    const bound1 = [33.7225, -118.32476];
+    const bound4 = [33.7268, -118.32431];
+    const polygon = turf.polygon([[bound0, bound1, bound2, bound3, bound4]], {});
+
     let directions = 3;
     let coinsPerCluster = 1;
     let minCrumbs = 0;
@@ -43,10 +53,14 @@ client.on( "connectionStateChanged", ( connectionState ) => {
       if (argArray[0] === "lng1") lng1 = value
       if (argArray[0] === "dir") directions = value
     });
+    const clustersLocations = randomPointsOnPolygon(clusters, polygon);
+    console.log(clustersLocations);
     for ( count = 0; count < clusters; count++ ) {
 
       // variables for this set of coins
-      const point = new LatLon(_.random(lat0, lat1) / pow, _.random(lng0, lng1) / pow);
+//      const point = new LatLon(_.random(lat0, lat1) / pow, _.random(lng0, lng1) / pow);
+      const pointCoords = clustersLocations[count].geometry.coordinates;
+      const point = new LatLon(pointCoords[0], pointCoords[1]);
       const crumbs = _.random(minCrumbs, maxCrumbs);
       if (crumbs === 3) needed + 1;
       const opts = { color: getRandomColor() };
