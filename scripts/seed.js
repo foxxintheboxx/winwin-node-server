@@ -51,6 +51,7 @@ client.on( "connectionStateChanged", ( connectionState ) => {
       if (argArray[0] === "lat1") lat1 = value
       if (argArray[0] === "lng0") lng0 = value
       if (argArray[0] === "lng1") lng1 = value
+      if (argArray[0] === "clusters") clusters = value
       if (argArray[0] === "dir") directions = value
     });
     const clustersLocations = randomPointsOnPolygon(clusters, polygon);

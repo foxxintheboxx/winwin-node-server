@@ -116,9 +116,9 @@ const updateObjectsNearUser = (uid, coordinates, pathUid, pathCount) => {
   } else {
     query.path_count = 0;
   }
-  console.log(query);
   let objectsNearUser = client.record.getRecord('nearuser/' + uid);
   db.find( 'object', query, ( err, docs ) => {
+      console.log(err);
       console.log(docs)
       const ids = _.reduce( docs.slice(0, 10), ( memo, doc ) => {
         memo[doc.ds_key] = true
