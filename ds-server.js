@@ -62,13 +62,14 @@ client.rpc.provide( 'pickup-object', ( data, response ) => {
   const objectsNearUser = client.record.getRecord( 'nearuser/' + userUid );
   const user = client.record.getRecord( 'users/' + userUid );
   const userLocationAdmin = client.record.getRecord( 'userlocationadmin/' + userUid);
-  client.record.has('object/' + objectUid, (error, exists) => {
+  const objectName = 'object/' + objectUid
+  client.record.has(objectName, (error, exists) => {
     console.log(objectUid);
     if (exists) {
-      const object = client.record.getRecord( 'object/' + objectUid);
+      const object = client.record.getRecord(objectName);
       objectsNearUser.whenReady( r => {
         const data = r.get();
-        if (data[objectUid]) {
+        if (data[objectName]) {
           object.whenReady( o => {
             const objectData = o.get()
             if (objectData.type === 'coin') {
@@ -121,7 +122,7 @@ const updateObjectsNearUser = (uid, coordinates, pathUid, pathCount) => {
       console.log(err);
       console.log(docs)
       const ids = _.reduce( docs.slice(0, 10), ( memo, doc ) => {
-        memo[doc.ds_key] = true
+        memo['object/' + doc.ds_key] = true
         return memo
       }, {});
       objectsNearUser.set( ids );
